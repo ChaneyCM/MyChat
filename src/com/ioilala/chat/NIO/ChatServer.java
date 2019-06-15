@@ -1,4 +1,4 @@
-package com.ioilala.chat;
+package com.ioilala.chat.NIO;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,7 +9,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +17,7 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 
+import com.ioilala.chat.*;
 import com.ioilala.utils.SerializeHelper;
 import com.ioilala.utils.StringHelper;
 
@@ -58,21 +58,19 @@ public final class ChatServer implements Runnable {
 					if(users.isEmpty()) {
 						System.out.println("当前无用户登录");
 					}
-							else {
-								System.out.print("用户列表：" + users.toString());
-								System.out.println();
-							}
-							break;
-						case 2:
-							if(server.getChatRooms().isEmpty()) {
-								System.out.println("当前无聊天室");
-							}
-							else {
-								System.out.println("聊天室列表：" + server.getChatRooms().toString());
-							}
-							break;
+					else {
+						System.out.print("用户列表：" + users.toString());
+						System.out.println();
+					}
+					break;
+					case 2:
+						if(server.getChatRooms().isEmpty()) {
+							System.out.println("当前无聊天室");
+						} else {
+							System.out.println("聊天室列表：" + server.getChatRooms().toString());
+						}
+						break;
 						case 3:
-							
 							break;
 						case 4:
 							try {
@@ -140,96 +138,77 @@ public final class ChatServer implements Runnable {
 	 * 最底层的接口，给其他接口调用
 	 * @param message
 	 */
-	private void sendRawMessage(SocketChannel sc,Message message) throws IOException
-	{
-		if(sc!=null&&message!=null)
-		{
+	private void sendRawMessage(SocketChannel sc, Message message) throws IOException {
+		if(sc!=null && message!=null) {
 			sc.write(message.wrap());
 		}
 	}
 	
-	public void run()
-	{
-		try
-		{
-			mSelector=Selector.open();
-			ServerSocketChannel server=ServerSocketChannel.open();
-			InetSocketAddress isa=new InetSocketAddress(mHost, mPort);
+	public void run() {
+		try {
+			mSelector = Selector.open();
+			ServerSocketChannel server = ServerSocketChannel.open();
+			InetSocketAddress isa = new InetSocketAddress(mHost, mPort);
 			server.bind(isa);//绑定指定端口
 			server.configureBlocking(false);
 			server.register(mSelector, SelectionKey.OP_ACCEPT);
-			System.out.println("服务器在"+mPort+"端口启动成功");
-			while(mSelector.select()>0)
-			{
-				Iterator<SelectionKey> keyIterator=mSelector.selectedKeys().iterator();
-				while(keyIterator.hasNext())
-				{
-					SelectionKey sk=keyIterator.next();
-					if(sk.isAcceptable())
-					{
-						SocketChannel sc=null;
-						sc=server.accept();//开始接收客户端连接
-						if(sc!=null)
-						{
+			System.out.println("服务器在" + mPort + "端口启动成功");
+			while(mSelector.select() > 0) {
+				Iterator<SelectionKey> keyIterator = mSelector.selectedKeys().iterator();
+				while(keyIterator.hasNext()) {
+					SelectionKey sk = keyIterator.next();
+					if(sk.isAcceptable()) {
+						SocketChannel sc = server.accept();  //开始接收客户端连接
+						System.out.println("用户已连接：" + sc.getRemoteAddress());
+						if(sc != null) {
 							sc.configureBlocking(false);
 							sc.register(mSelector, SelectionKey.OP_READ);
 							sk.interestOps(SelectionKey.OP_ACCEPT);
 						}			
 					}
-					if(sk.isReadable())//有数据
-					{
-						SocketChannel sc=(SocketChannel)sk.channel();
-						ByteBuffer buffer=ByteBuffer.allocate(1024);
-						ByteArrayOutputStream boStream=new ByteArrayOutputStream();
-						try 
-						{
-							int len=0;
-							while((len=sc.read(buffer))>0)//TODO:性能问题
-							{
+					if(sk.isReadable()) {   //有数据
+						SocketChannel sc = (SocketChannel)sk.channel();
+						ByteBuffer buffer = ByteBuffer.allocate(1024);
+						ByteArrayOutputStream boStream = new ByteArrayOutputStream();
+						try {
+							int len = 0;
+							while((len = sc.read(buffer)) > 0) {    //TODO:性能问题
 								//System.out.println("长度:"+len);
 								buffer.flip();
 								boStream.write(Arrays.copyOfRange(buffer.array(), 0, buffer.limit()));
 							}
 							//System.out.println("长度:"+len);							
-							byte[] frame=boStream.toByteArray();
+							byte[] frame = boStream.toByteArray();
 							boStream.close();
-							if(frame.length>0)
-							{
-								Message msg=(Message)SerializeHelper.deSerialize(frame);
-								if(msg!=null)
-								{
-									String userId=msg.get(FieldType.USER_ID);
+							if(frame.length > 0) {
+								Message msg = (Message)SerializeHelper.deSerialize(frame);
+								if(msg != null) {
+									String userId = msg.get(FieldType.USER_ID);
 									switch (msg.getCommand()) {
-									case LOG_IN:
-									{
-										System.out.println("用户"+userId+"请求登录...");
-										Message message=new Message(Commands.LOG_IN);
-										//TODO:检查用户名密码，暂时没有注册功能，就只检测用户名是否重复
-										if(!mUsers.containsKey(userId))
-										{
-											message.set(FieldType.RESPONSE_STATUS,"成功");
-											System.out.println("用户"+userId+"登录成功");
-											UserEntity user=new UserEntity(userId,sc);
-											mUsers.put(userId,user);
-										}
-										else {
-											message.set(FieldType.RESPONSE_STATUS,"该帐号已经登录");
-										}										
+										case LOG_IN: {
+											System.out.println("用户" + userId + "请求登录...");
+											Message message = new Message(Commands.LOG_IN);
+											//TODO:检查用户名密码，暂时没有注册功能，就只检测用户名是否重复
+											if(!mUsers.containsKey(userId)) {
+												message.set(FieldType.RESPONSE_STATUS, "成功");
+												System.out.println("用户" + userId + "登录成功");
+												UserEntity user = new UserEntity(userId, sc);
+												mUsers.put(userId, user);
+											} else {
+												message.set(FieldType.RESPONSE_STATUS, "该帐号已经登录");
+											}
 										//发送登录结果										
 										sendRawMessage(sc, message);
 										break;
 									}
-									case LOG_OUT:
-									{							
-										System.out.println("用户"+userId+"请求退出...");
+									case LOG_OUT: {
+										System.out.println("用户" + userId + "请求退出...");
 										Message message=new Message(Commands.LOG_OUT);
-										if(mUsers.containsKey(userId))
-										{
+										if(mUsers.containsKey(userId)) {
 											message.set(FieldType.RESPONSE_STATUS,"成功");
 											mUsers.remove(userId);
 											System.out.println("用户"+userId+"退出成功");
-										}
-										else {
+										} else {
 											message.set(FieldType.RESPONSE_STATUS,"该帐号已经退出");
 										}								
 										sendRawMessage(sc, message);
@@ -237,15 +216,14 @@ public final class ChatServer implements Runnable {
 									}
 									case MSG_P2P:
 									{
-										String toId=msg.get(FieldType.PEER_ID);
-										String txt=msg.get(FieldType.MSG_TXT);
+										String toId = msg.get(FieldType.PEER_ID);
+										String txt = msg.get(FieldType.MSG_TXT);
 										System.out.println("用户"+userId+"发送消息给用户"+toId);
-										Message message=new Message(Commands.MSG_P2P);
+										Message message = new Message(Commands.MSG_P2P);
 										if(mUsers.containsKey(userId)&&
 												mUsers.containsKey(toId)
-												&&!StringHelper.isNullOrTrimEmpty(txt))
-										{
-											SocketChannel scPeer=mUsers.get(toId).getSocketChannel();
+												&&!StringHelper.isNullOrTrimEmpty(txt)) {
+											SocketChannel scPeer = mUsers.get(toId).getSocketChannel();
 											message.set(FieldType.USER_ID, userId);
 											message.set(FieldType.PEER_ID, toId);
 											message.set(FieldType.MSG_TXT, txt);

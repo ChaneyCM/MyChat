@@ -1,4 +1,4 @@
-package com.ioilala.chat;
+package com.ioilala.chat.NIO;
 
 import java.util.Collections;
 import java.util.HashSet;

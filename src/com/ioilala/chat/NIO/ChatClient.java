@@ -1,4 +1,4 @@
-package com.ioilala.chat;
+package com.ioilala.chat.NIO;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -7,16 +7,15 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Scanner;
-import java.util.Set;
 
+import com.ioilala.chat.Commands;
+import com.ioilala.chat.FieldType;
+import com.ioilala.chat.Message;
 import com.ioilala.utils.SerializeHelper;
 import com.ioilala.utils.StringHelper;
-
-import sun.util.resources.cldr.sw.CalendarData_sw_KE;
 
 public final class ChatClient {
 	private Selector mSelector = null;
@@ -33,61 +32,54 @@ public final class ChatClient {
 							+ "；>3.创建聊天室；>4.加入聊天室；>5.查询房间成员；"
 							+ ">6.退出聊天室；>7.退出登录；>8.退出客户端");
 			System.out.println("发送消息格式为——#用户ID:消息正文 或者 $聊天室ID:消息正文");
-					boolean isExit = false;
-					while(!isExit)
-					{
-						String input = null;
+			boolean isExit = false;
+			while(!isExit) {
+				String input = null;
+				try {
+					input = scanner.nextLine();
+				} catch (Exception e) {
+					// TODO: handle exception
+					continue;
+				}
+				if(StringHelper.isNullOrTrimEmpty(input))
+					continue;
+				int choose = -1;
+				String type = input.substring(0,1);
+				switch (type) {
+					case ">":
 						try {
-							input=scanner.nextLine();
-						} catch (Exception e) {
-							// TODO: handle exception
+							choose = Integer.parseInt(input.substring(1));
+						} catch (NumberFormatException e) {
+							System.out.println("输入格式不对！>后面必须跟随整数菜单索引");
 							continue;
 						}
-						if(StringHelper.isNullOrTrimEmpty(input))
-							continue;
-						int choose = -1;
-						String type=input.substring(0,1);
-						switch (type) {
-							case ">":
-								try {
-									choose=Integer.parseInt(input.substring(1, input.length()));
-								} catch (NumberFormatException e) {
-									System.out.println("输入格式不对！>后面必须跟随整数菜单索引");
-									continue;
-								}
-								break;
-							case "#":
+						break;
+						case "#":
 							case "$":
-								if(!client.hasLogin())
-								{
+								if(!client.hasLogin()) {
 									System.out.println("尚未登录请先登录！");
 									continue;
 								}
-								if(input.length()<4||!input.contains(":"))
-								{
+								if(input.length()<4 || !input.contains(":")) {
 									System.out.println("发送消息格式为——#用户ID:消息正文 或者 $聊天室ID:消息正文");
 								}
-								String str=input.substring(1);
-								int splitIndex= str.indexOf(":");
-								String peerId=str.substring(0,splitIndex);
-								String message=str.substring(splitIndex+1,str.length());
-								if(StringHelper.isNullOrTrimEmpty(peerId)||StringHelper.isNullOrTrimEmpty(message))
-								{
+								String str = input.substring(1);
+								int splitIndex = str.indexOf(":");
+								String peerId = str.substring(0, splitIndex);
+								String message = str.substring(splitIndex+1);
+								if(StringHelper.isNullOrTrimEmpty(peerId) || StringHelper.isNullOrTrimEmpty(message)) {
 									System.out.println("消息格式错误");
 									continue;
 								}
-								if(type.equals("#"))
-								{
+								if(type.equals("#")) {
 									if(peerId.equals(client.mUserId))
 									{
 										System.out.println("不能对自己发消息");
 										continue;
 									}
-									client.sendMsgToUser(peerId,message);
-								}
-								else if(type.equals("$"))
-								{
-									client.sentMsgToRoom(peerId,message);
+									client.sendMsgToUser(peerId, message);
+								} else if(type.equals("$")) {
+									client.sentMsgToRoom(peerId, message);
 								}
 								break;
 							default:
@@ -95,8 +87,7 @@ public final class ChatClient {
 						}
 						switch (choose) {
 							case 0:
-								if(!client.hasLogin())
-								{
+								if(!client.hasLogin()) {
 									System.out.print("用户名:");
 									String userid = scanner.nextLine();
 									System.out.print("密码:");
@@ -104,8 +95,7 @@ public final class ChatClient {
 									client.mUserId = userid;
 									client.login(client.mUserId, passwd);
 									System.out.println("正在登录中...");
-								}
-								else {
+								} else {
 									System.out.println("您已登录，请退出当前账户");
 								}
 								break;
@@ -117,47 +107,39 @@ public final class ChatClient {
 								client.queryAllRoomList();
 								System.out.println("发送查询聊天室列表请求");
 								break;
-							case 3:
-							{
+							case 3: {
 								System.out.print("输入房间名称：");
-								String roomId=scanner.nextLine();
-								if(!StringHelper.isNullOrTrimEmpty(roomId))
-								{
+								String roomId = scanner.nextLine();
+								if(!StringHelper.isNullOrTrimEmpty(roomId)) {
 									client.createChatRoom(roomId);
 									System.out.println("正在创建聊天室...");
 								}
 								break;
 							}
-							case 4:
-							{
+							case 4: {
 								System.out.print("输入你要加入的房间名称：");
-								String roomId=scanner.nextLine();
-								if(!StringHelper.isNullOrTrimEmpty(roomId))
-								{
+								String roomId = scanner.nextLine();
+								if(!StringHelper.isNullOrTrimEmpty(roomId)) {
 									client.joinChatRoom(roomId);
 									System.out.println("正在加入聊天室...");
 								}
 								break;
 							}
-							case 5:
-							{
+							case 5: {
 								System.out.print("输入待查询成员的房间名称：");
 								String roomId=scanner.nextLine();
-								if(!StringHelper.isNullOrTrimEmpty(roomId))
-								{
+								if(!StringHelper.isNullOrTrimEmpty(roomId)) {
 									client.queryChatRoomMembers(roomId);
 									System.out.println("正在查询聊天室所有成员...");
 								}
 								break;
 							}
-							case 6:
-							{
+							case 6: {
 								System.out.print("输入你要退出的房间名称：");
 								String roomId = scanner.nextLine();
-								if(!StringHelper.isNullOrTrimEmpty(roomId))
-								{
+								if(!StringHelper.isNullOrTrimEmpty(roomId)) {
 									client.leaveChatRoom(roomId);
-									System.out.println("正在退出聊天室["+roomId+"]");
+									System.out.println("正在退出聊天室[" + roomId + "]");
 								}
 								break;
 							}
@@ -206,13 +188,6 @@ public final class ChatClient {
 		Thread clientThread = new ClientThread();
 		clientThread.setDaemon(true);
 		clientThread.start();
-//		Scanner scanner = new Scanner(System.in);
-//		while(scanner.hasNextLine())
-//		{
-//			String line = scanner.nextLine();
-//			sc.write(charset.encode(line)); //发送出去
-//		}
-//		scanner.close();
 	}
 	
 	public boolean hasLogin()
@@ -307,7 +282,7 @@ public final class ChatClient {
 		sendRawMessage(message);
 	}
 	
-	public void sendMsgToUser(String userid,String msg) {
+	public void sendMsgToUser(String userid, String msg) {
 		Message message=new Message(Commands.MSG_P2P);
 		message.set(FieldType.USER_ID, mUserId);
 		message.set(FieldType.PEER_ID, userid);
@@ -394,50 +369,50 @@ public final class ChatClient {
 											break;
 										}
 										case LOG_OUT: {
-											//退出懒得检查了
+											if(!isLogin) System.out.println("未登录，无法退出。");
 											isLogin = false;
 											System.out.println("退出成功！");
 											break;
 										}
 										case MSG_P2P: {
-											String result=msg.get(FieldType.RESPONSE_STATUS);
-											String fromId=msg.get(FieldType.USER_ID);
-											String toId=msg.get(FieldType.PEER_ID);
+											String result = msg.get(FieldType.RESPONSE_STATUS);
+											String fromId = msg.get(FieldType.USER_ID);
+											String toId = msg.get(FieldType.PEER_ID);
 											if(result.equals("成功")) {
-												String txt=msg.get(FieldType.MSG_TXT);
-												System.out.println(fromId+"对你说："+txt);
+												String txt = msg.get(FieldType.MSG_TXT);
+												System.out.println(fromId + "对你说：" + txt);
 											} else {
-												System.out.println("发送给"+toId+"的消息发送失败："+result);
+												System.out.println("发送给" + toId + "的消息发送失败：" + result);
 											}
 											break;
 										}
 										case MSG_P2R: {
-											String result=msg.get(FieldType.RESPONSE_STATUS);
-											String fromId=msg.get(FieldType.USER_ID);
-											String roomId=msg.get(FieldType.ROOM_ID);
+											String result = msg.get(FieldType.RESPONSE_STATUS);
+											String fromId = msg.get(FieldType.USER_ID);
+											String roomId = msg.get(FieldType.ROOM_ID);
 											if(result.equals("成功")) {
-												String txt=msg.get(FieldType.MSG_TXT);
-												System.out.println("来自聊天室"+roomId+"的"+fromId+"说："+txt);
+												String txt = msg.get(FieldType.MSG_TXT);
+												System.out.println("来自聊天室" + roomId + "的" + fromId + "说：" + txt);
 											} else {
-												System.out.println("发送到"+roomId+"消息发送失败："+result);
+												System.out.println("发送到" + roomId + "消息发送失败：" + result);
 											}
 											break;
 										}
 										case CREATE_CHAT_ROOM: {
-											String result=msg.get(FieldType.RESPONSE_STATUS);
+											String result = msg.get(FieldType.RESPONSE_STATUS);
 											if(result.equals("成功")) {
 												System.out.println("创建聊天室成功");
 											} else {
-												System.out.println("创建聊天室失败:"+result);
+												System.out.println("创建聊天室失败:" + result);
 											}
 											break;
 										}
 										case JOIN_CHAT_ROOM: {
-											String result=msg.get(FieldType.RESPONSE_STATUS);
+											String result = msg.get(FieldType.RESPONSE_STATUS);
 											if(result.equals("成功")) {
 												System.out.println("加入聊天室成功");
 											} else {
-												System.out.println("加入聊天室失败:"+result);
+												System.out.println("加入聊天室失败:" + result);
 											}
 											break;
 										}
@@ -470,7 +445,7 @@ public final class ChatClient {
 											break;
 										}
 										case QUERY_USERS: {
-											String userList=msg.get(FieldType.USER_LIST);
+											String userList = msg.get(FieldType.USER_LIST);
 											//System.out.println(users);
 											if(userList.length()>0) {
 												//String[] userArray=userList.split(",");

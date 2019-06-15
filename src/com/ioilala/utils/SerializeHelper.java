@@ -8,11 +8,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-/**
- * @author hust_wsh
- *
- */
 public final class SerializeHelper {
+
 	private SerializeHelper(){}
 	
 	public static byte[] serialize(Object object) {
@@ -25,21 +22,18 @@ public final class SerializeHelper {
             oos.writeObject(object);
             byte[] bytes = baos.toByteArray();
             return bytes;
-        } catch (Exception e) {
-
-        }
+        } catch (Exception e) { }
         return null;
     }
-	 public static Object deSerialize(byte[] bytes) {
-	        ByteArrayInputStream bais = null;
-	        try {
-	            // 反序列化
-	            bais = new ByteArrayInputStream(bytes);
-	            ObjectInputStream ois = new ObjectInputStream(bais);
-	            return ois.readObject();
-	        } catch (Exception e) {
 
-	        }
-	        return null;
-	    }
+	 public static Object deSerialize(byte[] bytes) {
+	    ByteArrayInputStream bais = null;
+	    try {
+	        // 反序列化
+            bais = new ByteArrayInputStream(bytes);
+            ObjectInputStream ois = new ObjectInputStream(bais);
+            return ois.readObject();
+	    } catch (Exception e) { }
+	    return null;
+	}
 }

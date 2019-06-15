@@ -1,4 +1,4 @@
-package com.ioilala.chat;
+package com.ioilala.chat.NIO;
 
 import java.nio.channels.SocketChannel;
 import java.util.Collections;

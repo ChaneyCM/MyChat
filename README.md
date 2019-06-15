@@ -75,7 +75,7 @@
 		java.util.ConcurrentModificationException
 		at java.util.HashMap$HashIterator.nextNode(HashMap.java:1429)
 		at java.util.HashMap$KeyIterator.next(HashMap.java:1453)
-		at com.ioilala.chat.ChatServer.run(ChatServer.java:169)
+		at com.ioilala.chat.NIO.ChatServer.run(ChatServer.java:169)
 		at java.lang.Thread.run(Thread.java:745)
 		出错地点：
 		for(SelectionKey sk:mSelector.selectedKeys())
