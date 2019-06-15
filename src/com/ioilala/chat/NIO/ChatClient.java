@@ -11,9 +11,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Scanner;
 
-import com.ioilala.chat.Commands;
-import com.ioilala.chat.FieldType;
-import com.ioilala.chat.Message;
 import com.ioilala.utils.SerializeHelper;
 import com.ioilala.utils.StringHelper;
 
